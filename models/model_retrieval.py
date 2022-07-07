@@ -20,7 +20,7 @@ class ALBEF(nn.Module):
         vision_width = config['vision_width']  
         self.visual_encoder = VisionTransformer(
             img_size=config['image_res'], patch_size=16, embed_dim=768, depth=12, num_heads=12, 
-            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))    
+            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), use_checkpoint=config['use_checkpoint'])    
 
         bert_config = BertConfig.from_json_file(config['bert_config'])
         self.text_encoder = BertModel.from_pretrained(text_encoder, config=bert_config, add_pooling_layer=False)      
