@@ -112,8 +112,8 @@ def evaluation(model, data_loader, tokenizer, device, config):
     image_feats = torch.cat(image_feats,dim=0)
     image_embeds = torch.cat(image_embeds,dim=0)
     
-    sims_matrix = image_embeds @ text_embeds.t()
-    score_matrix_i2t = torch.full((len(data_loader.dataset.image),len(texts)),-100.0).to(device)
+    sims_matrix = image_embeds @ text_embeds.t() # torch.Size([5000, 25010])
+    score_matrix_i2t = torch.full((len(data_loader.dataset.image),len(texts)),-100.0).to(device) # torch.Size([5000, 25010])
     
     num_tasks = utils.get_world_size()
     rank = utils.get_rank() 
@@ -136,6 +136,8 @@ def evaluation(model, data_loader, tokenizer, device, config):
                                     )
             score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
             score_matrix_i2t[start+i,topk_idx] = score
+    else:
+        score_matrix_i2t[start:end, :] = sims_matrix[start:end, :]
         
     sims_matrix = sims_matrix.t()
     score_matrix_t2i = torch.full((len(texts),len(data_loader.dataset.image)),-100.0).to(device)
@@ -159,6 +161,8 @@ def evaluation(model, data_loader, tokenizer, device, config):
                                     )
             score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
             score_matrix_t2i[start+i,topk_idx] = score
+    else:
+        score_matrix_t2i[start:end, :] = sims_matrix[start:end, :]
 
     if args.distributed:
         dist.barrier()   
