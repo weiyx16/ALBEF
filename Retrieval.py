@@ -121,20 +121,21 @@ def evaluation(model, data_loader, tokenizer, device, config):
     start = rank*step
     end = min(sims_matrix.size(0),start+step)
 
-    for i,sims in enumerate(metric_logger.log_every(sims_matrix[start:end], 50, header)): 
-        topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
+    if config['k_test'] > 1:
+        for i,sims in enumerate(metric_logger.log_every(sims_matrix[start:end], 50, header)): 
+            topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
 
-        encoder_output = image_feats[start+i].repeat(config['k_test'],1,1)
-        encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
-        output = model.text_encoder(encoder_embeds = text_feats[topk_idx], 
-                                    attention_mask = text_atts[topk_idx],
-                                    encoder_hidden_states = encoder_output,
-                                    encoder_attention_mask = encoder_att,                             
-                                    return_dict = True,
-                                    mode = 'fusion'
-                                   )
-        score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
-        score_matrix_i2t[start+i,topk_idx] = score
+            encoder_output = image_feats[start+i].repeat(config['k_test'],1,1)
+            encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
+            output = model.text_encoder(encoder_embeds = text_feats[topk_idx], 
+                                        attention_mask = text_atts[topk_idx],
+                                        encoder_hidden_states = encoder_output,
+                                        encoder_attention_mask = encoder_att,                             
+                                        return_dict = True,
+                                        mode = 'fusion'
+                                    )
+            score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
+            score_matrix_i2t[start+i,topk_idx] = score
         
     sims_matrix = sims_matrix.t()
     score_matrix_t2i = torch.full((len(texts),len(data_loader.dataset.image)),-100.0).to(device)
@@ -143,20 +144,21 @@ def evaluation(model, data_loader, tokenizer, device, config):
     start = rank*step
     end = min(sims_matrix.size(0),start+step)    
     
-    for i,sims in enumerate(metric_logger.log_every(sims_matrix[start:end], 50, header)): 
-        
-        topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
-        encoder_output = image_feats[topk_idx]
-        encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
-        output = model.text_encoder(encoder_embeds = text_feats[start+i].repeat(config['k_test'],1,1), 
-                                    attention_mask = text_atts[start+i].repeat(config['k_test'],1),
-                                    encoder_hidden_states = encoder_output,
-                                    encoder_attention_mask = encoder_att,                             
-                                    return_dict = True,
-                                    mode = 'fusion'
-                                   )
-        score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
-        score_matrix_t2i[start+i,topk_idx] = score
+    if config['k_test'] > 1:
+        for i,sims in enumerate(metric_logger.log_every(sims_matrix[start:end], 50, header)): 
+            
+            topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
+            encoder_output = image_feats[topk_idx]
+            encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
+            output = model.text_encoder(encoder_embeds = text_feats[start+i].repeat(config['k_test'],1,1), 
+                                        attention_mask = text_atts[start+i].repeat(config['k_test'],1),
+                                        encoder_hidden_states = encoder_output,
+                                        encoder_attention_mask = encoder_att,                             
+                                        return_dict = True,
+                                        mode = 'fusion'
+                                    )
+            score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
+            score_matrix_t2i[start+i,topk_idx] = score
 
     if args.distributed:
         dist.barrier()   

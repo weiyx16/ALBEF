@@ -176,7 +176,7 @@ class VisionTransformer(nn.Module):
             if not self.use_checkpoint:
                 x = blk(x, register_blk==i)
             else:
-                x = checkpoint.checkpoint(blk, x, register_blk==i)
+                x = checkpoint.checkpoint(blk, x)
         x = self.norm(x)
         
         return x
