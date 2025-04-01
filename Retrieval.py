@@ -49,7 +49,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
             alpha = config['alpha']*min(1,i/len(data_loader))
 
         loss_ita, loss_itm = model(image, text_input,alpha=alpha, idx=idx)                  
-        loss = loss_ita + loss_itm
+        loss = loss_ita + config["itm_weight"] * loss_itm
         
         optimizer.zero_grad()
         loss.backward()
